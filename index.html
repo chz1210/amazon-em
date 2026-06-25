@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>EM 26 PD Daily Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12.1.2/highcharts.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highcharts@12.1.2/modules/accessibility.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+  --color-bg: #f8f9fb; --color-bg-secondary: #ffffff; --color-text: #1a1a2e;
+  --color-text-secondary: #44546f; --color-text-muted: #8993a4;
+  --color-border-light: #e8eaed; --color-border: #dfe1e6;
+  --color-primary: #0052CC; --color-success: #36b37e; --color-error: #de350b;
+  --color-warning: #ff991f;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', SFMono-Regular, Consolas, monospace;
+  --radius-sm: 4px; --radius-md: 8px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--color-bg); font-family: var(--font-sans); color: var(--color-text); padding: 24px; }
+.header { margin-bottom: 20px; }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header .subtitle { color: var(--color-text-muted); font-size: 13px; margin-top: 4px; }
+.header .meta { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--color-text-secondary); align-items: center; flex-wrap: wrap; }
+.meta-tag { background: #e3f2fd; color: #0052CC; padding: 2px 8px; border-radius: var(--radius-sm); font-weight: 500; font-size: 11px; }
+
+.section { background: var(--color-bg-secondary); border: 1px solid var(--color-border-light); border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 20px; }
+.section h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+
+.progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.progress-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius-sm); background: #f8f9fb; }
+.progress-item .arc-label { font-size: 12px; font-weight: 600; min-width: 55px; }
+.progress-item .bar-wrap { flex: 1; }
+.progress-item .bar-info { display: flex; justify-content: space-between; font-size: 10px; color: var(--color-text-muted); margin-bottom: 3px; }
+.progress-item .bar { height: 6px; background: #e8eaed; border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; }
+.bar-fill.active { background: linear-gradient(90deg, #0052CC, #36b37e); }
+.bar-fill.completed { background: #36b37e; }
+.status-tag { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: 600; white-space: nowrap; }
+.status-tag.live { background: #e3fcef; color: #006644; }
+.status-tag.upcoming { background: #f4f5f7; color: #8993a4; }
+
+.overall-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.overall-table th { text-align: center; color: var(--color-text-muted); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--color-border); font-size: 10px; text-transform: uppercase; }
+.overall-table th.group-header { background: #f0f4ff; border-bottom: 1px solid var(--color-border-light); font-size: 11px; }
+.overall-table th:first-child, .overall-table td:first-child { text-align: left; }
+.overall-table td { padding: 7px 8px; border-bottom: 1px solid var(--color-border-light); font-family: var(--font-mono); font-size: 11px; text-align: center; }
+.overall-table tr:hover td { background: #f8f9fb; }
+.positive { color: var(--color-success); font-weight: 500; }
+.negative { color: var(--color-error); font-weight: 500; }
+
+.arc-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--color-border-light); margin-top: 20px; }
+.arc-tab { padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; color: var(--color-text-muted); transition: all 0.15s; }
+.arc-tab:hover { color: var(--color-text); background: #f8f9fb; }
+.arc-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+.arc-tab .tab-status { font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-left: 6px; font-weight: 600; vertical-align: middle; }
+.arc-tab .tab-status.live { background: #e3fcef; color: #006644; }
+.arc-tab .tab-status.upcoming { background: #f4f5f7; color: #8993a4; }
+
+.arc-content { display: none; background: var(--color-bg-secondary); border: 1px solid var(--color-border-light); border-top: none; border-radius: 0 0 var(--radius-md) var(--radius-md); padding: 20px; margin-bottom: 20px; }
+.arc-content.active { display: block; }
+
+.kpi-row { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.kpi-mini { padding: 10px 14px; background: #f8f9fb; border-radius: var(--radius-sm); min-width: 130px; }
+.kpi-mini .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); margin-bottom: 2px; }
+.kpi-mini .kpi-value { font-size: 18px; font-weight: 700; font-family: var(--font-mono); }
+.kpi-mini .kpi-delta { font-size: 11px; font-weight: 500; margin-top: 2px; }
+.kpi-mini.highlight { background: linear-gradient(135deg, #e3f2fd, #f0f4ff); border: 1px solid #bbdefb; }
+
+.daily-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+.daily-table th { text-align: left; color: var(--color-text-muted); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--color-border); font-size: 10px; text-transform: uppercase; }
+.daily-table td { padding: 6px 8px; border-bottom: 1px solid var(--color-border-light); font-family: var(--font-mono); font-size: 11px; }
+.daily-table tr.today-row { background: #fffde7; font-weight: 600; }
+.daily-table tr.today-row td { border-bottom: 2px solid var(--color-warning); }
+.today-badge { display: inline-block; background: var(--color-warning); color: white; font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 600; margin-left: 4px; }
+.partial-badge { display: inline-block; background: #e3f2fd; color: #0052CC; font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 600; margin-left: 4px; }
+
+.upcoming-msg { text-align: center; padding: 40px 20px; color: var(--color-text-muted); }
+.upcoming-msg i { font-size: 32px; margin-bottom: 10px; display: block; }
+
+.mp-breakdown { margin-top: 14px; }
+.mp-breakdown h4 { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--color-text-secondary); }
+
+.data-scope { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--color-text-muted); background: #f4f5f7; padding: 3px 10px; border-radius: 12px; margin-bottom: 12px; }
+.data-scope i { font-size: 10px; }
+.data-scope.complete { background: #e3fcef; color: #006644; }
+.data-scope.partial { background: #fffde7; color: #ff8b00; }
+.extraction-time { font-size: 10px; color: var(--color-text-muted); background: #f4f5f7; padding: 3px 10px; border-radius: 12px; display: inline-flex; align-items: center; gap: 5px; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🇨🇳 EM PD 2026 — Intra-Event Daily Tracker</h1>
+  <div class="subtitle">CN Seller Promotion Performance in Emerging Marketplaces</div>
+  <div class="meta">
+    <span class="meta-tag">PD 2026</span>
+    <span><i class="fa-regular fa-calendar"></i> Updated: Jun 24, 2026 13:00 CST</span>
+    <span><i class="fa-solid fa-database"></i> Source: AGS Merchandising Pulse Portal (Real-time)</span>
+  </div>
+</div>
+
+<!-- Event Progress -->
+<div class="section">
+  <h3><i class="fa-solid fa-chart-line"></i> Event Progress</h3>
+  <div class="progress-grid">
+    <div class="progress-item">
+      <span class="arc-label">MX</span>
+      <div class="bar-wrap">
+        <div class="bar-info"><span>Day 2 / 7</span><span class="status-tag live">LIVE</span></div>
+        <div class="bar"><div class="bar-fill active" style="width:28%"></div></div>
+      </div>
+    </div>
+    <div class="progress-item">
+      <span class="arc-label">EUX</span>
+      <div class="bar-wrap">
+        <div class="bar-info"><span>Day 2 / 4</span><span class="status-tag live">LIVE</span></div>
+        <div class="bar"><div class="bar-fill active" style="width:50%"></div></div>
+      </div>
+    </div>
+    <div class="progress-item">
+      <span class="arc-label">MENA</span>
+      <div class="bar-wrap">
+        <div class="bar-info"><span>Day 1 / 7</span><span class="status-tag live">LIVE</span></div>
+        <div class="bar"><div class="bar-fill active" style="width:14%"></div></div>
+      </div>
+    </div>
+    <div class="progress-item">
+      <span class="arc-label">BR</span>
+      <div class="bar-wrap">
+        <div class="bar-info"><span>Starts Jun 29</span><span class="status-tag upcoming">UPCOMING</span></div>
+        <div class="bar"><div class="bar-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="progress-item">
+      <span class="arc-label">AU</span>
+      <div class="bar-wrap">
+        <div class="bar-info"><span>Starts Jul 7</span><span class="status-tag upcoming">UPCOMING</span></div>
+        <div class="bar"><div class="bar-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="progress-item">
+      <span class="arc-label">IN</span>
+      <div class="bar-wrap">
+        <div class="bar-info"><span>July TBC</span><span class="status-tag upcoming">UPCOMING</span></div>
+        <div class="bar"><div class="bar-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overall Performance Table -->
+<div class="section">
+  <h3><i class="fa-solid fa-table"></i> Accumulated Performance</h3>
+  <table class="overall-table">
+    <thead>
+      <tr>
+        <th rowspan="2" style="vertical-align:bottom;">ARC</th>
+        <th colspan="5" class="group-header" style="border-right:2px solid #dfe1e6;">CNGS (China Sellers)</th>
+        <th colspan="4" class="group-header">DOM (Total 3P)</th>
+      </tr>
+      <tr>
+        <th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th><th style="border-right:2px solid #dfe1e6;">OPS/GMS%</th>
+        <th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-weight:600;">MX <span style="font-size:9px; color:#006644; font-weight:400;">✓ Day 1 Full</span></td>
+        <td>$4.22M</td><td class="negative">-11.6%</td><td>$8.48M</td><td class="negative">-11.5%</td><td style="border-right:2px solid #dfe1e6;">49.7%</td>
+        <td>$8.23M</td><td class="negative">-5.1%</td><td>$19.63M</td><td class="negative">-12.8%</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">EUX <span style="font-size:9px; color:#006644; font-weight:400;">✓ Day 1 Full + Day 2 Partial (~1h)</span></td>
+        <td>$4.66M</td><td class="positive">+2.9%</td><td>$11.80M</td><td class="positive">+23.2%</td><td style="border-right:2px solid #dfe1e6;">39.5%</td>
+        <td>$6.65M</td><td class="positive">+14.0%</td><td>$19.61M</td><td class="positive">+24.8%</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">MENA <span style="font-size:9px; color:#006644; font-weight:400;">⏳ Day 1 Partial (~7h)</span></td>
+        <td>$409K</td><td class="negative">-1.0%</td><td>$742K</td><td class="positive">+9.4%</td><td style="border-right:2px solid #dfe1e6;">55.2%</td>
+        <td>$933K</td><td class="positive">+54.6%</td><td>$2.41M</td><td class="positive">+18.0%</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="font-size:10px; color:var(--color-text-muted); margin-top:8px;">
+    <i class="fa-solid fa-info-circle"></i> Extracted: Jun 24 12:00 CST. MX = Day 1 Full (Jun 23, 19h); Day 2 no data yet (MX local time still early Jun 24). EUX = Day 1 Full (Jun 23) + Day 2 Partial (Jun 24 early hours). MENA = Day 1 Partial (Jun 24, AE 5h + SA 4h).<br>
+    DOM column = Total 3P (all seller origins combined). Table shows Day 1 data only.
+  </div>
+</div>
+
+<!-- ARC Tabs -->
+<h2 style="font-size:15px; font-weight:700; margin-top:24px; margin-bottom:8px;">ARC Details</h2>
+<div class="arc-tabs">
+  <div class="arc-tab active" onclick="switchArc('mx')">MX <span class="tab-status live">LIVE</span></div>
+  <div class="arc-tab" onclick="switchArc('eux')">EUX <span class="tab-status live">LIVE</span></div>
+  <div class="arc-tab" onclick="switchArc('mena')">MENA <span class="tab-status live">LIVE</span></div>
+  <div class="arc-tab" onclick="switchArc('br')">BR <span class="tab-status upcoming">Jun 29</span></div>
+  <div class="arc-tab" onclick="switchArc('au')">AU <span class="tab-status upcoming">Jul 7</span></div>
+  <div class="arc-tab" onclick="switchArc('in')">IN <span class="tab-status upcoming">TBC</span></div>
+</div>
+
+<!-- MX Content -->
+<div id="arc-mx" class="arc-content active">
+  <div class="data-scope complete"><i class="fa-solid fa-circle-check"></i> Coverage: Day 1 Full (Jun 23, Hour 0–18, 19h); Day 2 no data yet (MX timezone UTC-6, ~0h elapsed at extraction time)</div><span class="extraction-time"><i class="fa-regular fa-clock"></i> Extracted: Jun 24 12:00 CST</span>
+
+  <div class="mp-breakdown">
+    <h4>Daily Performance</h4>
+    <table class="overall-table">
+      <thead>
+        <tr>
+          <th rowspan="2" style="vertical-align:bottom;">Day</th>
+          <th rowspan="2" style="vertical-align:bottom;">Date</th>
+          <th colspan="5" class="group-header" style="border-right:2px solid #dfe1e6;">CNGS (China Sellers)</th>
+          <th colspan="3" class="group-header">DOM (Total 3P)</th>
+        </tr>
+        <tr>
+          <th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th><th style="border-right:2px solid #dfe1e6;">OPS/GMS%</th>
+          <th>Promo OPS</th><th>OPS YoY</th><th>GMS YoY</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td><td>Jun 23</td>
+          <td>$4,215,223</td><td class="negative">-11.6%</td><td>$8,475,553</td><td class="negative">-11.5%</td><td style="border-right:2px solid #dfe1e6;">49.7%</td>
+          <td>$8,234,215</td><td class="negative">-5.1%</td><td class="negative">-12.8%</td>
+        </tr>
+        <tr class="today-row">
+          <td>2 <span class="today-badge">TODAY</span></td><td>Jun 24</td>
+          <td colspan="8" style="text-align:center; color:var(--color-text-muted); font-family:var(--font-sans);">No data yet (0h elapsed) — MX local time UTC-6, Day 2 not started at extraction time</td>
+        </tr>
+        <tr><td>3</td><td>Jun 25</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>4</td><td>Jun 26</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>5</td><td>Jun 27</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>6</td><td>Jun 28</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>7</td><td>Jun 29</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mp-breakdown" style="margin-top:20px;">
+    <h4>Accumulated Performance by Seller Origin</h4>
+    <table class="daily-table">
+    <thead>
+      <tr><th>Seller Origin</th><th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th><th>OPS/GMS%</th></tr>
+    </thead>
+    <tbody>
+      <tr><td style="font-weight:600;">CN</td><td>$4,215,223</td><td class="negative">-11.6%</td><td>$8,475,553</td><td class="negative">-11.5%</td><td>49.7%</td></tr>
+      <tr><td>DOM</td><td>$3,421,852</td><td class="positive">+4.8%</td><td>$8,111,631</td><td class="negative">-14.6%</td><td>42.2%</td></tr>
+      <tr><td>Others</td><td>$587,009</td><td class="negative">-24.1%</td><td>$2,994,144</td><td class="negative">-13.5%</td><td>19.6%</td></tr>
+      <tr><td>KR</td><td>$7,274</td><td class="positive">+260.4%</td><td>$20,464</td><td class="positive">+19.8%</td><td>35.5%</td></tr>
+      <tr><td>TW</td><td>$2,533</td><td class="positive">+312.1%</td><td>$22,527</td><td class="positive">+103.1%</td><td>11.2%</td></tr>
+      <tr><td>VN</td><td>$325</td><td class="positive">+14.0%</td><td>$1,789</td><td class="negative">-69.2%</td><td>18.1%</td></tr>
+      <tr style="font-weight:700; background:#f0f4ff;"><td>Total</td><td>$8,234,215</td><td class="negative">-5.1%</td><td>$19,626,109</td><td class="negative">-12.8%</td><td>42.0%</td></tr>
+    </tbody>
+    </table>
+  </div>
+
+  <div class="mp-breakdown" style="margin-top:20px;">
+    <h4>Top ASINs (CN Sellers, by Promo OPS)</h4>
+    <table class="daily-table">
+      <thead>
+        <tr><th>#</th><th>ASIN</th><th>Product Name</th><th>Promo OPS</th><th style="text-align:left; min-width:120px;">Category</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>B0G7J9JQ7K</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">DREAME D20 Ultra Robot Aspirador y friegasuelos</td><td>$26,889</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>2</td><td>B0CXDXKSXP</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">DREAME X40 Ultra Robot aspirador y trapeador</td><td>$26,602</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>3</td><td>B0FGZ23PTL</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Generador Eléctrico Portátil Ecoflow Delta 3</td><td>$16,264</td><td><span style="font-size:16px; vertical-align:middle;">🔋</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Power Bank</span></td></tr>
+        <tr><td>4</td><td>B0GH6QDKJ9</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">DREAME L40s Ultra Ae Aspirador Robótico</td><td>$15,713</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>5</td><td>B0GNG6DMHM</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">DREAME X60 Ultra Robot Aspirador y trapeador</td><td>$14,840</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>6</td><td>B0CH33F5P2</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">UGREEN 10000mAh Power Bank Inalámbrico PD 20W</td><td>$13,998</td><td><span style="font-size:16px; vertical-align:middle;">🔋</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Power Bank</span></td></tr>
+        <tr><td>7</td><td>B0G4TPZPZM</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">ELEGOO Centauri Carbon 2 Canvas Impresora 3D</td><td>$13,712</td><td><span style="font-size:16px; vertical-align:middle;">🖨️</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">3D Printer</span></td></tr>
+        <tr><td>8</td><td>B0G7HGW13M</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">DREAME D15 Plus Robot Aspirador y trapeador</td><td>$13,448</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>9</td><td>B0FYQ4Y2ZZ</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Plaud Note Pro Grabadora de Voz AI con Funda</td><td>$12,593</td><td><span style="font-size:16px; vertical-align:middle;">🎙️</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">AI Recorder</span></td></tr>
+        <tr><td>10</td><td>B0DCMW8SJV</td><td style="font-family:var(--font-sans); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">INIU Más Pequeño 20000mAh Power Bank, 22.5W</td><td>$12,081</td><td><span style="font-size:16px; vertical-align:middle;">🔋</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Power Bank</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- EUX Content -->
+<div id="arc-eux" class="arc-content">
+  <div class="data-scope complete"><i class="fa-solid fa-circle-check"></i> Coverage: Day 1 Full (Jun 23); Day 2 Partial (~1h, Jun 24 early hours still accumulating)</div><span class="extraction-time"><i class="fa-regular fa-clock"></i> Extracted: Jun 24 12:00 CST</span>
+
+  <div class="mp-breakdown">
+    <h4>Daily Performance</h4>
+    <table class="overall-table">
+      <thead>
+        <tr>
+          <th rowspan="2" style="vertical-align:bottom;">Day</th>
+          <th rowspan="2" style="vertical-align:bottom;">Date</th>
+          <th colspan="5" class="group-header" style="border-right:2px solid #dfe1e6;">CNGS (China Sellers)</th>
+          <th colspan="3" class="group-header">DOM (Total 3P)</th>
+        </tr>
+        <tr>
+          <th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th><th style="border-right:2px solid #dfe1e6;">OPS/GMS%</th>
+          <th>Promo OPS</th><th>OPS YoY</th><th>GMS YoY</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td><td>Jun 23</td>
+          <td>$4,460,270</td><td class="positive">+2.6%</td><td>$11,303,274</td><td class="positive">+23.3%</td><td style="border-right:2px solid #dfe1e6;">39.5%</td>
+          <td>$6,368,966</td><td class="positive">+13.6%</td><td class="positive">+24.9%</td>
+        </tr>
+        <tr class="today-row">
+          <td>2 <span class="today-badge">TODAY</span> <span class="partial-badge">~1h</span></td><td>Jun 24</td>
+          <td>$202,635</td><td class="positive">+9.0%</td><td>$493,476</td><td class="positive">+21.4%</td><td style="border-right:2px solid #dfe1e6;">41.1%</td>
+          <td>$285,722</td><td class="positive">+19.6%</td><td class="positive">+21.2%</td>
+        </tr>
+        <tr><td>3</td><td>Jun 25</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>4</td><td>Jun 26</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mp-breakdown" style="margin-top:20px;">
+    <h4>Accumulated Performance by Seller Origin</h4>
+    <table class="daily-table">
+      <thead>
+        <tr><th>Seller Origin</th><th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th><th>OPS/GMS%</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-weight:600;">CN</td><td>$4,662,905</td><td class="positive">+2.9%</td><td>$11,796,750</td><td class="positive">+23.2%</td><td>39.5%</td></tr>
+        <tr><td>DOM</td><td>$159,170</td><td class="positive">+16.5%</td><td>$579,902</td><td class="positive">+39.2%</td><td>27.4%</td></tr>
+        <tr><td>KR</td><td>$61,205</td><td class="positive">+80.4%</td><td>$97,374</td><td class="positive">+70.4%</td><td>62.9%</td></tr>
+        <tr><td>Others</td><td>$1,759,561</td><td class="positive">+56.2%</td><td>$7,110,821</td><td class="positive">+25.7%</td><td>24.7%</td></tr>
+        <tr><td>TW</td><td>$11,848</td><td class="positive">+4.0%</td><td>$26,423</td><td class="positive">+20.8%</td><td>44.8%</td></tr>
+        <tr style="font-weight:700; background:#f0f4ff;"><td>Total</td><td>$6,654,688</td><td class="positive">+14.0%</td><td>$19,611,370</td><td class="positive">+24.8%</td><td>33.9%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mp-breakdown" style="margin-top:20px;">
+    <h4>Accumulated Performance by Marketplace</h4>
+    <table class="daily-table">
+      <thead>
+        <tr><th>Marketplace</th><th>CN Promo OPS</th><th>OPS YoY</th><th>CN GMS</th><th>GMS YoY</th><th>OPS/GMS%</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-weight:600;">NL</td><td>$1,316,899</td><td class="negative">-6.1%</td><td>$3,732,408</td><td class="positive">+27.0%</td><td>35.3%</td></tr>
+        <tr><td style="font-weight:600;">BE</td><td>$1,159,999</td><td class="positive">+31.1%</td><td>$3,245,569</td><td class="positive">+40.4%</td><td>35.7%</td></tr>
+        <tr><td style="font-weight:600;">PL</td><td>$789,326</td><td class="negative">-18.5%</td><td>$1,253,831</td><td class="negative">-7.0%</td><td>63.0%</td></tr>
+        <tr><td style="font-weight:600;">SE</td><td>$768,723</td><td class="positive">+12.1%</td><td>$1,826,074</td><td class="positive">+20.1%</td><td>42.1%</td></tr>
+        <tr><td style="font-weight:600;">IE</td><td>$425,269</td><td class="positive">+63.0%</td><td>$1,245,391</td><td class="positive">+41.4%</td><td>34.1%</td></tr>
+        <tr style="font-weight:700; background:#f0f4ff;"><td>EUX Total</td><td>$4,662,905</td><td class="positive">+2.9%</td><td>$11,796,750</td><td class="positive">+23.2%</td><td>39.5%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mp-breakdown" style="margin-top:20px;">
+    <h4>Top ASINs (CN Sellers, by Promo OPS)</h4>
+    <table class="daily-table">
+      <thead>
+        <tr><th>#</th><th>MP</th><th>ASIN</th><th>Product Name</th><th>Promo OPS</th><th style="text-align:left; min-width:120px;">Category</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>PL</td><td>B0GJ519CND</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MAMMOTION YUKA mini 2 800 LiDAR Robot koszący</td><td>$32,815</td><td><span style="font-size:16px; vertical-align:middle;">🏡</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Lawn Mower</span></td></tr>
+        <tr><td>2</td><td>BE</td><td>B0GCCLW2PL</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MAMMOTION YUKA mini 2 500 Robot Tondeuse sans Fil</td><td>$30,850</td><td><span style="font-size:16px; vertical-align:middle;">🏡</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Lawn Mower</span></td></tr>
+        <tr><td>3</td><td>NL</td><td>B0G4NC8KN7</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">roborock Saros 20 Set Robotstofzuiger met Dweilfun</td><td>$26,960</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>4</td><td>NL</td><td>B0GHN3V6BP</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">roborock Qrevo S Pro Set Robotstofzuiger met dweil</td><td>$24,475</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>5</td><td>NL</td><td>B0FC2VSX1R</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">roborock Saros 10R Set Stofzuigrobot met Dweilfunc</td><td>$22,879</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>6</td><td>BE</td><td>B0G4NC8KN7</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">roborock Saros 20 Set Robot Aspirateur Laveur</td><td>$19,370</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>7</td><td>BE</td><td>B0GJ519CND</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">MAMMOTION YUKA Mini 2 800 LiDAR Robot Tondeuse</td><td>$17,532</td><td><span style="font-size:16px; vertical-align:middle;">🏡</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Lawn Mower</span></td></tr>
+        <tr><td>8</td><td>NL</td><td>B0GDZ8167S</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Segway Navimow i208 LiDAR robotgrasmaaier</td><td>$16,895</td><td><span style="font-size:16px; vertical-align:middle;">🏡</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Lawn Mower</span></td></tr>
+        <tr><td>9</td><td>NL</td><td>B0GHMV8ML5</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">roborock Qrevo S Pro Set Robotstofzuiger met dweil</td><td>$15,285</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>10</td><td>BE</td><td>B0GHN3V6BP</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">roborock Qrevo S Pro Set Robot Aspirateur Laveur</td><td>$15,068</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MENA Content -->
+<div id="arc-mena" class="arc-content">
+  <div class="data-scope partial"><i class="fa-solid fa-hourglass-half"></i> Coverage: Day 1 In Progress (Jun 24, AE 8h + SA 7h, not full day)</div><span class="extraction-time"><i class="fa-regular fa-clock"></i> Extracted: Jun 24 12:00 CST</span>
+
+  <div class="mp-breakdown">
+    <h4>Daily Performance</h4>
+    <table class="overall-table">
+      <thead>
+        <tr>
+          <th rowspan="2" style="vertical-align:bottom;">Day</th>
+          <th rowspan="2" style="vertical-align:bottom;">Date</th>
+          <th colspan="5" class="group-header" style="border-right:2px solid #dfe1e6;">CNGS (China Sellers)</th>
+          <th colspan="3" class="group-header">DOM (Total 3P)</th>
+        </tr>
+        <tr>
+          <th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th><th style="border-right:2px solid #dfe1e6;">OPS/GMS%</th>
+          <th>Promo OPS</th><th>OPS YoY</th><th>GMS YoY</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="today-row">
+          <td>1 <span class="today-badge">TODAY</span> <span class="partial-badge">~7h</span></td><td>Jun 24</td>
+          <td>$409,121</td><td class="negative">-1.0%</td><td>$741,586</td><td class="positive">+9.4%</td><td style="border-right:2px solid #dfe1e6;">55.2%</td>
+          <td>$932,732</td><td class="positive">+54.6%</td><td class="positive">+18.0%</td>
+        </tr>
+        <tr><td>2</td><td>Jun 25</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>3</td><td>Jun 26</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>4</td><td>Jun 27</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>5</td><td>Jun 28</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>6</td><td>Jun 29</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+        <tr><td>7</td><td>Jun 30</td><td colspan="8" style="color:var(--color-text-muted);">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mp-breakdown" style="margin-top:20px;">
+    <h4>Accumulated Performance by Seller Origin</h4>
+    <table class="daily-table">
+      <thead>
+        <tr><th>Seller Origin</th><th>Promo OPS</th><th>OPS YoY</th><th>GMS</th><th>GMS YoY</th><th>OPS/GMS%</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-weight:600;">CN</td><td>$409,121</td><td class="negative">-1.0%</td><td>$741,586</td><td class="positive">+9.4%</td><td>55.2%</td></tr>
+        <tr><td>DOM</td><td>$342,944</td><td class="negative">-12.8%</td><td>$1,335,145</td><td class="positive">+6.6%</td><td>25.7%</td></tr>
+        <tr><td>Others</td><td>$162,628</td><td class="positive">+326.7%</td><td>$314,080</td><td class="positive">+80.7%</td><td>51.8%</td></tr>
+        <tr><td>KR</td><td>$16,662</td><td class="positive">+137.0%</td><td>$19,332</td><td class="positive">+123.0%</td><td>86.2%</td></tr>
+        <tr><td>TW</td><td>$1,377</td><td class="positive">+441.5%</td><td>$1,985</td><td class="negative">-4.8%</td><td>69.4%</td></tr>
+        <tr style="font-weight:700; background:#f0f4ff;"><td>Total</td><td>$932,732</td><td class="positive">+54.6%</td><td>$2,412,128</td><td class="positive">+18.0%</td><td>38.7%</td></tr>
+      </tbody>
+    </table>
+    <div style="font-size:10px; color:var(--color-text-muted); margin-top:6px;">
+      <i class="fa-solid fa-info-circle"></i> CN: AE (8h, OPS -4.8%) + SA (7h, OPS +0.9%). Data from CSV export with more hours than initial browser extraction.
+    </div>
+  </div>
+
+  <div class="mp-breakdown" style="margin-top:20px;">
+    <h4>Top ASINs (CN Sellers, by Promo OPS)</h4>
+    <table class="daily-table">
+      <thead>
+        <tr><th>#</th><th>MP</th><th>ASIN</th><th>Product Name</th><th>Promo OPS</th><th style="text-align:left; min-width:120px;">Category</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>SA</td><td>B0FQ4QNH4P</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Creality K2 Combo (A) 3D Printer, Multi Color</td><td>$4,291</td><td><span style="font-size:16px; vertical-align:middle;">🖨️</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">3D Printer</span></td></tr>
+        <tr><td>2</td><td>SA</td><td>B0DCBB2YTR</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Anker Power Bank, 25,000mAh 165W Ultra-Fast</td><td>$2,900</td><td><span style="font-size:16px; vertical-align:middle;">🔋</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Power Bank</span></td></tr>
+        <tr><td>3</td><td>SA</td><td>B0B129KTPF</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Efomao Big and Tall Office Chair 400lbs</td><td>$2,790</td><td><span style="font-size:16px; vertical-align:middle;">🪑</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Office Chair</span></td></tr>
+        <tr><td>4</td><td>SA</td><td>B0FLJPJF63</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Roborock Qrevo C Pro Robot Vacuum and Mop</td><td>$2,783</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>5</td><td>AE</td><td>B0H1CWBX7K</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">AIPER Scuba S1 Robotic Pool Cleaner</td><td>$2,450</td><td><span style="font-size:16px; vertical-align:middle;">🏊</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Pool Cleaner</span></td></tr>
+        <tr><td>6</td><td>AE</td><td>B0DZXPGYK2</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">NEBULA X1 Triple Laser 4K Projector, 3500 ANSI</td><td>$2,437</td><td><span style="font-size:16px; vertical-align:middle;">📽️</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Projector</span></td></tr>
+        <tr><td>7</td><td>SA</td><td>B0C5RHJRQS</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">SIHOO M18 Home-Style Gaming Chair, Ergonomic</td><td>$2,159</td><td><span style="font-size:16px; vertical-align:middle;">🪑</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Office Chair</span></td></tr>
+        <tr><td>8</td><td>AE</td><td>B0FMXR7GWN</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">roborock Qrevo C Pro Robot Vacuum and Mop</td><td>$2,122</td><td><span style="font-size:16px; vertical-align:middle;">🤖</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Robot Vacuum</span></td></tr>
+        <tr><td>9</td><td>SA</td><td>B0FX9R3MBR</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">EF ECOFLOW Wave 3 Portable Air Conditioner</td><td>$2,106</td><td><span style="font-size:16px; vertical-align:middle;">❄️</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Portable AC</span></td></tr>
+        <tr><td>10</td><td>SA</td><td>B0F1CS4VC2</td><td style="font-family:var(--font-sans); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Govee Uplighter Floor Lamp for Living Room</td><td>$2,025</td><td><span style="font-size:16px; vertical-align:middle;">💡</span> <span style="font-size:11px; color:#44546f; vertical-align:middle;">Smart Lamp</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- BR Content -->
+<div id="arc-br" class="arc-content">
+  <div class="upcoming-msg">
+    <i class="fa-regular fa-clock"></i>
+    <p style="font-size:14px; font-weight:600; margin-bottom:4px;">BR PD starts Jun 29</p>
+    <p>5 days from now — data will appear once the event begins</p>
+  </div>
+</div>
+
+<!-- AU Content -->
+<div id="arc-au" class="arc-content">
+  <div class="upcoming-msg">
+    <i class="fa-regular fa-clock"></i>
+    <p style="font-size:14px; font-weight:600; margin-bottom:4px;">AU PD starts Jul 7</p>
+    <p>13 days from now</p>
+  </div>
+</div>
+
+<!-- IN Content -->
+<div id="arc-in" class="arc-content">
+  <div class="upcoming-msg">
+    <i class="fa-regular fa-clock"></i>
+    <p style="font-size:14px; font-weight:600; margin-bottom:4px;">IN PD — July (TBC)</p>
+    <p>Date to be confirmed. IN not yet available in dashboard filters.</p>
+  </div>
+</div>
+
+<script>
+function switchArc(id) {
+  document.querySelectorAll('.arc-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.arc-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('arc-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+</script>
+</body>
+</html>
